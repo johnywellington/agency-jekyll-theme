@@ -1,0 +1,448 @@
+---
+layout: none
+---
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Araujo Auth</title>
+  <style>
+    /* ======== RESET BÁSICO ======== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at top, #0f172a, #020617);
+      padding: 20px;
+    }
+
+    /* ======== CARD PRINCIPAL ======== */
+    .auth-wrapper {
+      width: min(420px, 100%);
+      background: rgba(2, 6, 23, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 18px;
+      backdrop-filter: blur(24px);
+      box-shadow: 0 18px 60px rgba(0,0,0,0.35);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 22px 26px 12px;
+      color: #fff;
+    }
+
+    .header h1 {
+      font-size: 1.6rem;
+      letter-spacing: -.02em;
+    }
+
+    .header p {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 4px;
+    }
+
+    /* ======== CONTEÚDO ======== */
+    .content {
+      padding: 16px 26px 26px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.78rem;
+      color: #cbd5f5;
+      margin-bottom: 6px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 12px;
+      padding: 0 8px;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+
+    .input-wrapper input {
+      flex: 1; /* <-- mantém o campo com tamanho completo mesmo com o botão de ver senha */
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 9px 6px;
+      color: #e2e8f0;
+      font-size: 0.82rem;
+    }
+
+    .toggle-password {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.7rem;
+      padding: 4px 6px 4px 4px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+
+    .toggle-password:hover {
+      background: rgba(148, 163, 184, 0.1);
+      color: #fff;
+    }
+
+    /* ======== BOTÕES ======== */
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      border: none;
+      color: #0f172a;
+      font-weight: 600;
+      padding: 10px 0;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: transform .1s ease;
+      margin-top: 4px;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+    }
+
+    /* ======== BOTÃO GOOGLE (moderno) ======== */
+    .btn-google {
+      width: 100%;
+      background: #fff;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      color: #0f172a;
+      font-weight: 500;
+      padding: 9px 16px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background .1s ease;
+      margin-bottom: 10px;
+    }
+
+    .btn-google:hover {
+      background: #f1f5f9;
+    }
+
+    .btn-google img {
+      width: 18px;
+      height: 18px;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 14px 0;
+      color: rgba(226, 232, 240, .4);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+    }
+
+    .divider span {
+      flex: 1;
+      height: 1px;
+      background: rgba(148, 163, 184, 0.2);
+    }
+
+    .links {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.7rem;
+    }
+
+    .link {
+      color: #38bdf8;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    /* ======== MEDIDOR DE SENHA ======== */
+    .password-meter {
+      margin-top: 6px;
+    }
+
+    .meter-bar {
+      height: 6px;
+      background: rgba(15, 23, 42, .3);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      width: 0%;
+      transition: width .2s ease;
+    }
+
+    .meter-text {
+      font-size: 0.68rem;
+      margin-top: 4px;
+      color: #cbd5f5;
+    }
+
+    /* ======== TROCA LOGIN x CADASTRO ======== */
+    .screen {
+      display: none;
+    }
+    .screen.active {
+      display: block;
+    }
+
+    @media (max-width: 480px) {
+      .auth-wrapper {
+        background: rgba(2, 6, 23, 0.6);
+      }
+      .links {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="header">
+      <h1 id="title">Bem-vindo de volta 👋</h1>
+      <p id="subtitle">Faça login para continuar no painel Araujo.</p>
+    </div>
+    <div class="content">
+      <!-- ====== TELA LOGIN ====== -->
+      <div id="login-screen" class="screen active">
+        <button class="btn-google" id="google-login">
+          <!-- ícone G oficial -->
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+          Continuar com o Google
+        </button>
+
+        <div class="divider">
+          <span></span>
+          ou
+          <span></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="login-email">E-mail</label>
+          <div class="input-wrapper">
+            <input type="email" id="login-email" placeholder="seuemail@exemplo.com" autocomplete="username" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="login-password">Senha</label>
+          <div class="input-wrapper">
+            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+            <button type="button" class="toggle-password" data-target="login-password">
+              👁️
+            </button>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-login">Entrar</button>
+
+        <div class="links">
+          <a class="link" id="to-register">Criar conta</a>
+          <a class="link">Esqueci a senha</a>
+        </div>
+      </div>
+
+      <!-- ====== TELA CADASTRO ====== -->
+      <div id="register-screen" class="screen">
+        <div class="form-group">
+          <label class="form-label" for="reg-name">Nome completo</label>
+          <div class="input-wrapper">
+            <input type="text" id="reg-name" placeholder="Johny Wellington de Araujo" autocomplete="name" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reg-email">E-mail</label>
+          <div class="input-wrapper">
+            <input type="email" id="reg-email" placeholder="seuemail@exemplo.com" autocomplete="email" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reg-password">Senha</label>
+          <div class="input-wrapper">
+            <input type="password" id="reg-password" placeholder="Crie uma senha forte" autocomplete="new-password" />
+            <button type="button" class="toggle-password" data-target="reg-password">
+              👁️
+            </button>
+          </div>
+
+          <!-- Medidor de senha -->
+          <div class="password-meter" id="password-meter">
+            <div class="meter-bar">
+              <div class="meter-fill" id="meter-fill"></div>
+            </div>
+            <div class="meter-text" id="meter-text">Senha vazia</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reg-confirm">Confirmar senha</label>
+          <div class="input-wrapper">
+            <input type="password" id="reg-confirm" placeholder="Repita a senha" autocomplete="new-password" />
+            <button type="button" class="toggle-password" data-target="reg-confirm">
+              👁️
+            </button>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-register">Criar conta</button>
+
+        <div class="links">
+          <a class="link" id="to-login">Já tenho conta</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================
+    // FUNÇÕES DE TROCA DE TELA LOGIN <-> CADASTRO
+    // =========================================================
+    const loginScreen = document.getElementById("login-screen");
+    const registerScreen = document.getElementById("register-screen");
+    const toRegister = document.getElementById("to-register");
+    const toLogin = document.getElementById("to-login");
+    const title = document.getElementById("title");
+    const subtitle = document.getElementById("subtitle");
+
+    toRegister?.addEventListener("click", () => {
+      loginScreen.classList.remove("active");
+      registerScreen.classList.add("active");
+      title.textContent = "Criar conta";
+      subtitle.textContent = "Preencha os dados para começar.";
+    });
+
+    toLogin?.addEventListener("click", () => {
+      registerScreen.classList.remove("active");
+      loginScreen.classList.add("active");
+      title.textContent = "Bem-vindo de volta 👋";
+      subtitle.textContent = "Faça login para continuar no painel Araujo.";
+    });
+
+    // =========================================================
+    // BOTÃO MOSTRAR / OCULTAR SENHA
+    // =========================================================
+    document.querySelectorAll(".toggle-password").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-target");
+        const input = document.getElementById(targetId);
+        if (!input) return;
+        const isPassword = input.getAttribute("type") === "password";
+        input.setAttribute("type", isPassword ? "text" : "password");
+        btn.textContent = isPassword ? "🙈" : "👁️"; // <-- troca o ícone sem encolher o input
+      });
+    });
+
+    // =========================================================
+    // MEDIDOR DE SENHA (fraca, média, forte)
+    // =========================================================
+    const regPassword = document.getElementById("reg-password");
+    const meterFill = document.getElementById("meter-fill");
+    const meterText = document.getElementById("meter-text");
+
+    function checkPasswordStrength(password) {
+      // Regras simples: tamanho, números, maiúsculas, especiais
+      let score = 0;
+      if (!password) return 0;
+      if (password.length >= 6) score++;
+      if (password.length >= 10) score++;
+      if (/[0-9]/.test(password)) score++;
+      if (/[A-Z]/.test(password)) score++;
+      if (/[^A-Za-z0-9]/.test(password)) score++; // caractere especial
+      return score;
+    }
+
+    regPassword?.addEventListener("input", (e) => {
+      const val = e.target.value;
+      const score = checkPasswordStrength(val);
+
+      // Ajusta largura e cor de acordo com o score
+      let width = "0%";
+      let color = "#ef4444";
+      let text = "Senha vazia";
+
+      if (score <= 1) {
+        width = "25%";
+        color = "#ef4444"; // vermelho
+        text = "Senha fraca";
+      } else if (score === 2) {
+        width = "50%";
+        color = "#f97316"; // laranja
+        text = "Senha razoável";
+      } else if (score === 3) {
+        width = "75%";
+        color = "#22c55e"; // verde
+        text = "Senha boa";
+      } else if (score >= 4) {
+        width = "100%";
+        color = "#0ea5e9"; // azul
+        text = "Senha forte 🔒";
+      }
+
+      meterFill.style.width = width;
+      meterFill.style.background = color;
+      meterText.textContent = text;
+    });
+
+    // =========================================================
+    // BOTÃO GOOGLE (aqui você integra o Firebase/Auth/Node/PHP)
+    // =========================================================
+    const googleBtn = document.getElementById("google-login");
+    googleBtn?.addEventListener("click", () => {
+      // Aqui você chama o fluxo real de login Google
+      // Exemplo (Firebase): signInWithPopup(auth, new GoogleAuthProvider())
+      alert("Login com Google – integrar backend (Node/PHP/Python) + OAuth 2.0");
+    });
+
+    // =========================================================
+    // BOTÕES DE ENVIO (simulação)
+    // =========================================================
+    document.getElementById("btn-login")?.addEventListener("click", () => {
+      // Aqui você envia via fetch('/auth/login', { ... })
+      alert("Login enviado!");
+    });
+
+    document.getElementById("btn-register")?.addEventListener("click", () => {
+      // Aqui você envia via fetch('/auth/register', { ... })
+      alert("Cadastro enviado!");
+    });
+  </script>
+</body>
+</html>
