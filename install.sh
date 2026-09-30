@@ -12,6 +12,8 @@
 # Variáveis opcionais:  DEST=/opt/callcenter-dialer  CC_PORT=8089  AMI_HOST=127.0.0.1
 #                       AMI_PORT=5038 (central) / 5039 (remoto)  TZ_OP=America/Sao_Paulo
 # Asterisk por VPN:     AMI_HOST=<IP da central na VPN> AMI_PORT=5038 bash install.sh
+# Reutilizar um utilizador AMI que já existe (ex. o do painel atual), sem mexer na central:
+#                       AMI_USER=<utilizador> AMI_PASS='<senha>' bash install.sh
 # Idempotente: pode correr outra vez para atualizar o código (não mexe na config nem nos dados).
 set -euo pipefail
 
@@ -47,21 +49,18 @@ cp "$SRC/public/index.html" "$DEST/public/"
 
 if [ ! -f "$DEST/config.json" ]; then
   SENHA=$(head -c 9 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 12)
-  AMISECRET=$(head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)
-  cat > "$DEST/config.json" <<EOF
-{
-  "porta": $CC_PORT,
-  "host": "0.0.0.0",
-  "senha": "$SENHA",
-  "contexto": "callcenter-dialer",
-  "dados": "$DEST/dados.json",
-  "ami": { "host": "$AMI_HOST", "port": $AMI_PORT, "user": "callcenter", "pass": "$AMISECRET" }
-}
-EOF
+  AMISECRET=${AMI_PASS:-$(head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)}
+  AMIUSER=${AMI_USER:-callcenter}
+  # gerado pelo node para a senha AMI poder ter aspas, $ ou \ sem partir o JSON
+  SENHA="$SENHA" AMISECRET="$AMISECRET" AMIUSER="$AMIUSER" AMI_HOST="$AMI_HOST" AMI_PORT="$AMI_PORT" CC_PORT="$CC_PORT" DEST="$DEST" \
+  node -e 'const e = process.env; require("fs").writeFileSync(e.DEST + "/config.json", JSON.stringify({
+    porta: +e.CC_PORT, host: "0.0.0.0", senha: e.SENHA, contexto: "callcenter-dialer", dados: e.DEST + "/dados.json",
+    ami: { host: e.AMI_HOST, port: +e.AMI_PORT, user: e.AMIUSER, pass: e.AMISECRET } }, null, 2) + "\n")'
   chmod 600 "$DEST/config.json"
   echo "→ config.json criado (senha do painel: $SENHA)"
 else
   AMISECRET=$(node -p "require('$DEST/config.json').ami.pass")
+  AMIUSER=$(node -p "require('$DEST/config.json').ami.user")
   echo "→ config.json já existe — mantido"
 fi
 
@@ -114,6 +113,19 @@ if [ "$MODO" = remoto ]; then
       && echo "  ✔ AMI $AMI_HOST:$AMI_PORT responde a partir deste servidor" \
       || echo "  ✘ AMI $AMI_HOST:$AMI_PORT NÃO responde — VPN em baixo, firewall, ou AMI só em 127.0.0.1 (bindaddr)"
   fi
+fi
+
+if [ "$MODO" = remoto ] && [ "$AMIUSER" != callcenter ]; then
+  cat <<EOF
+
+  A usar o utilizador AMI que já existe ("$AMIUSER") — a central NÃO precisa de alterações.
+  Ver em poucos segundos se ligou:  journalctl -u callcenter-dialer -n 5   (deve dizer "AMI ligado")
+
+  (Opcional) para o ramal mostrar o número do cliente em vez do CallerID de saída, acrescentar na
+  central o conteúdo de asterisk/extensions_custom.conf a /etc/asterisk/extensions_custom.conf
+  e correr:  asterisk -rx "dialplan reload"
+EOF
+elif [ "$MODO" = remoto ]; then
   cat <<EOF
 
 ⚠️  A CENTRAL NÃO FOI ALTERADA. O painel vai mostrar "Asterisk desligado" até:
