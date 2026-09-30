@@ -11,6 +11,7 @@
 #
 # Variáveis opcionais:  DEST=/opt/callcenter-dialer  CC_PORT=8089  AMI_HOST=127.0.0.1
 #                       AMI_PORT=5038 (central) / 5039 (remoto)  TZ_OP=America/Sao_Paulo
+# Asterisk por VPN:     AMI_HOST=<IP da central na VPN> AMI_PORT=5038 bash install.sh
 # Idempotente: pode correr outra vez para atualizar o código (não mexe na config nem nos dados).
 set -euo pipefail
 
@@ -104,6 +105,15 @@ echo "✔ Painel instalado: http://${IP:-IP-DO-SERVIDOR}:$CC_PORT"
 echo "  Senha: ver \"senha\" em $DEST/config.json"
 
 if [ "$MODO" = remoto ]; then
+  # por VPN a AMI vê o IP que este servidor tem na VPN, não 127.0.0.1
+  if [ "$AMI_HOST" = 127.0.0.1 ]; then PERMIT=127.0.0.1; ORIGEM="túnel SSH (chega como 127.0.0.1)"
+  else
+    PERMIT=$(ip route get "$AMI_HOST" 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' || true)
+    PERMIT=${PERMIT:-IP-DESTE-SERVIDOR-NA-VPN}; ORIGEM="VPN (IP deste servidor na VPN)"
+    timeout 5 bash -c "echo > /dev/tcp/$AMI_HOST/$AMI_PORT" 2>/dev/null \
+      && echo "  ✔ AMI $AMI_HOST:$AMI_PORT responde a partir deste servidor" \
+      || echo "  ✘ AMI $AMI_HOST:$AMI_PORT NÃO responde — VPN em baixo, firewall, ou AMI só em 127.0.0.1 (bindaddr)"
+  fi
   cat <<EOF
 
 ⚠️  A CENTRAL NÃO FOI ALTERADA. O painel vai mostrar "Asterisk desligado" até:
@@ -112,9 +122,9 @@ if [ "$MODO" = remoto ]; then
      (ex. o túnel SSH que o Call Monitor já usa, ou um túnel novo).
 
   2) Na CENTRAL, com a sua autorização, acrescentar a /etc/asterisk/manager_custom.conf:
-$(sed "s/TROCAR-SEGREDO-AMI/$AMISECRET/; s/^/       /" "$SRC/asterisk/manager_custom.conf")
+$(sed "s/TROCAR-SEGREDO-AMI/$AMISECRET/; s#^permit = .*#permit = $PERMIT/255.255.255.255#; s/^/       /" "$SRC/asterisk/manager_custom.conf")
      e correr:  asterisk -rx "manager reload"
-     (o permit 127.0.0.1 serve para ligações que chegam pelo túnel SSH)
+     (permit = origem da ligação: $ORIGEM)
 
   3) Na CENTRAL, acrescentar a /etc/asterisk/extensions_custom.conf o conteúdo de
      asterisk/extensions_custom.conf e correr:  asterisk -rx "dialplan reload"
