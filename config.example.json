@@ -1,0 +1,13 @@
+{
+  "porta": 8089,
+  "host": "0.0.0.0",
+  "senha": "TROCAR-ESTA-SENHA",
+  "contexto": "callcenter-dialer",
+  "dados": "/opt/callcenter-dialer/dados.json",
+  "ami": {
+    "host": "127.0.0.1",
+    "port": 5038,
+    "user": "callcenter",
+    "pass": "TROCAR-SEGREDO-AMI"
+  }
+}

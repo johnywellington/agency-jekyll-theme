@@ -1,0 +1,14 @@
+{
+  "name": "callcenter-dialer",
+  "version": "1.0.0",
+  "description": "Discador de call center para FreePBX / Asterisk: lista de números, escolha do tronco, liga e quando o cliente atende toca no ramal.",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/e2e.js",
+    "demo": "node test/mock-ami.js 5038"
+  },
+  "engines": { "node": ">=18" },
+  "license": "Apache-2.0"
+}

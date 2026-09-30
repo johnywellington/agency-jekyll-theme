@@ -1,0 +1,17 @@
+[Unit]
+Description=Call Center Dialer (FreePBX/Asterisk)
+After=network.target asterisk.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/callcenter-dialer
+ExecStart=/usr/bin/node /opt/callcenter-dialer/server.js
+Restart=always
+RestartSec=3
+User=asterisk
+Group=asterisk
+# ajustar ao fuso da operação — o "horário permitido" das campanhas usa esta hora
+Environment=TZ=America/Sao_Paulo
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Call Center Dialer</title>
+<style>
+:root {
+  --bg: #f4f5f7; --card: #fff; --txt: #1d2330; --sub: #667085; --line: #e3e6eb;
+  --pri: #2563eb; --pri-txt: #fff; --ok: #16a34a; --warn: #d97706; --bad: #dc2626; --info: #7c3aed;
+  --chip: #eef1f5;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f1218; --card: #171b23; --txt: #e6e8ec; --sub: #98a1b2; --line: #2a303b;
+    --pri: #3b82f6; --chip: #222835; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--txt); }
+header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 16px; margin: 0; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: var(--bad); margin-right: 6px; }
+.dot.on { background: var(--ok); }
+.muted { color: var(--sub); }
+.wrap { display: grid; grid-template-columns: 280px 1fr; gap: 16px; padding: 16px 20px; max-width: 1400px; margin: 0 auto; }
+@media (max-width: 860px) { .wrap { grid-template-columns: 1fr; padding: 12px 16px; } }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.side .item { padding: 10px 12px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; margin-bottom: 6px; }
+.side .item:hover { background: var(--chip); }
+.side .item.sel { border-color: var(--pri); background: var(--chip); }
+.side .item b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button, .btn { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--txt); padding: 7px 12px; border-radius: 7px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+button:hover, .btn:hover { border-color: var(--sub); }
+button.pri { background: var(--pri); color: var(--pri-txt); border-color: var(--pri); }
+button.big { padding: 10px 22px; font-size: 15px; font-weight: 600; }
+button.bad { color: var(--bad); }
+button.armed { background: var(--bad); color: #fff; border-color: var(--bad); }
+button:disabled { opacity: .5; cursor: default; }
+button.sm { padding: 3px 8px; font-size: 12px; }
+label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+input, select, textarea { font: inherit; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--txt); }
+textarea { min-height: 180px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--txt); margin: 0; }
+.check input { width: auto; }
+details summary { cursor: pointer; color: var(--sub); margin: 12px 0 8px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin: 14px 0; }
+.stat { background: var(--chip); border-radius: 8px; padding: 10px 12px; cursor: pointer; border: 1px solid transparent; }
+.stat.sel { border-color: var(--pri); }
+.stat .n { font-size: 22px; font-weight: 700; }
+.stat .l { font-size: 12px; color: var(--sub); }
+.bar { height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; }
+.bar > div { height: 100%; background: var(--ok); transition: width .3s; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: middle; }
+th { color: var(--sub); font-weight: 500; font-size: 12px; }
+.tbl { overflow-x: auto; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; background: var(--chip); white-space: nowrap; }
+.b-pendente { color: var(--sub); }
+.b-a-ligar, .b-a-tocar { background: #fef3c7; color: #92400e; }
+.b-atendeu { background: #ede9fe; color: #5b21b6; }
+.b-em-conversa { background: #dcfce7; color: #166534; animation: pulse 1.6s infinite; }
+.b-concluida { background: #dcfce7; color: #166534; }
+.b-nao-atendeu, .b-ocupado, .b-recusou, .b-sem-agente { background: #ffedd5; color: #9a3412; }
+.b-falhou, .b-bloqueado { background: #fee2e2; color: #991b1b; }
+@keyframes pulse { 50% { opacity: .6; } }
+.aviso { padding: 8px 12px; border-radius: 7px; background: var(--chip); margin-top: 10px; font-size: 13px; }
+.aviso.warn { background: #fef3c7; color: #92400e; }
+.estado-camp { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: var(--chip); }
+.estado-camp.a-correr { background: #dcfce7; color: #166534; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 16px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; max-width: 90vw; }
+.toast.show { opacity: 1; }
+#login { max-width: 340px; margin: 12vh auto; }
+.hidden { display: none !important; }
+.num { font-family: ui-monospace, Menlo, Consolas, monospace; }
+h2 { margin: 0; font-size: 18px; }
+h3 { margin: 0 0 12px; font-size: 15px; }
+</style>
+</head>
+<body>
+
+<div id="login" class="card hidden">
+  <h3>Call Center Dialer</h3>
+  <label>Senha</label>
+  <input id="senha" type="password" autocomplete="current-password">
+  <div class="row" style="margin-top:12px"><button class="pri" onclick="entrar()">Entrar</button></div>
+  <div id="loginErro" class="muted" style="margin-top:8px"></div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <h1>📞 Call Center Dialer</h1>
+    <span class="muted"><span id="amiDot" class="dot"></span><span id="amiTxt">AMI</span></span>
+    <span style="flex:1"></span>
+    <button class="pri" onclick="novaCampanha()">+ Nova campanha</button>
+  </header>
+  <div id="avisoContexto" class="hidden" style="padding:8px 20px;background:#fef3c7;color:#92400e;font-size:13px">
+    ⚠️ O contexto <b>[callcenter-dialer]</b> não está no dialplan: as chamadas funcionam, mas o agente vê o CallerID de saída em vez do número do cliente. Veja <code>asterisk/extensions_custom.conf</code> no README.
+  </div>
+  <div class="wrap">
+    <aside class="card side">
+      <h3>Campanhas</h3>
+      <div id="lista"></div>
+    </aside>
+    <main id="main"></main>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const S = { ami: false, temContexto: true, troncos: [], campanhas: [], sel: null, modo: 'ver', filtro: '' };
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const cls = s => String(s).replace(/\s+/g, '-');
+
+const NOMES = { 'pendente': 'Pendente', 'a ligar': 'A ligar', 'a tocar': 'A tocar', 'atendeu': 'Atendeu → ramal', 'em conversa': 'Em conversa',
+  'concluida': 'Concluída', 'nao atendeu': 'Não atendeu', 'ocupado': 'Ocupado', 'recusou': 'Recusou', 'sem agente': 'Sem agente',
+  'falhou': 'Falhou', 'bloqueado': 'Blacklist' };
+const ESTADOS_CAMP = { 'parada': 'Parada', 'a correr': 'A ligar', 'pausada': 'Pausada', 'concluida': 'Concluída' };
+
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 3500); }
+
+async function api(metodo, url, corpo) {
+  const r = await fetch(url, { method: metodo, headers: { 'Content-Type': 'application/json' }, body: corpo ? JSON.stringify(corpo) : undefined });
+  if (r.status === 401 && url !== '/api/login') { mostrarLogin(); throw new Error('sessão expirada'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || ('erro ' + r.status));
+  return j;
+}
+
+/* confirmação em dois cliques — o confirm() nativo pode estar bloqueado no browser */
+function doisCliques(btn, fn) {
+  if (btn.classList.contains('armed')) { btn.classList.remove('armed'); btn.textContent = btn.dataset.txt; fn(); return; }
+  btn.dataset.txt = btn.textContent; btn.classList.add('armed'); btn.textContent = 'Clique de novo para confirmar';
+  setTimeout(() => { if (btn.classList.contains('armed')) { btn.classList.remove('armed'); btn.textContent = btn.dataset.txt; } }, 3000);
+}
+
+/* ─── login e tempo real ─── */
+function mostrarLogin() { $('app').classList.add('hidden'); $('login').classList.remove('hidden'); $('senha').focus(); if (S.es) S.es.close(); }
+async function entrar() {
+  try { await api('POST', '/api/login', { senha: $('senha').value }); $('login').classList.add('hidden'); ligarEventos(); }
+  catch (e) { $('loginErro').textContent = e.message; }
+}
+$('senha').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+
+function ligarEventos() {
+  if (S.es) S.es.close();
+  const es = new EventSource('/api/eventos');
+  S.es = es;
+  es.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.tipo === 'inicio') {
+      Object.assign(S, { ami: m.ami, temContexto: m.temContexto, troncos: m.troncos, campanhas: m.campanhas });
+      $('app').classList.remove('hidden');
+      if (!S.sel && S.campanhas[0]) S.sel = S.campanhas[0].id;
+      if (!S.campanhas.length && S.modo === 'ver') S.modo = 'nova';
+      // numa religação do SSE não apagar o formulário que o utilizador está a preencher
+      if (S.modo !== 'ver' && $('f_nome')) { renderTopo(); renderLista(); } else render();
+    } else if (m.tipo === 'campanha') {
+      const i = S.campanhas.findIndex(c => c.id === m.campanha.id);
+      if (i >= 0) S.campanhas[i] = m.campanha; else S.campanhas.unshift(m.campanha);
+      renderLista();
+      if (S.sel === m.campanha.id && S.modo === 'ver') renderCampanha();
+    } else if (m.tipo === 'apagada') {
+      S.campanhas = S.campanhas.filter(c => c.id !== m.id);
+      if (S.sel === m.id) { S.sel = S.campanhas[0]?.id || null; S.modo = S.sel ? 'ver' : 'nova'; }
+      render();
+    } else if (m.tipo === 'ami') { S.ami = m.ligado; renderTopo(); }
+    else if (m.tipo === 'sistema') { S.temContexto = m.temContexto; renderTopo(); }
+    else if (m.tipo === 'troncos') { S.troncos = m.troncos; if (S.modo !== 'ver') atualizarTroncos(); }
+  };
+  es.onerror = () => {
+    // 401 no EventSource não chega como status — confirmar com um pedido normal
+    fetch('/api/troncos', { method: 'POST' }).then(r => { if (r.status === 401) mostrarLogin(); }).catch(() => {});
+  };
+}
+
+/* ─── render ─── */
+function render() { renderTopo(); renderLista(); if (S.modo === 'ver' && camp()) renderCampanha(); else renderForm(S.modo === 'editar' ? camp() : null); }
+function camp() { return S.campanhas.find(c => c.id === S.sel); }
+function renderTopo() {
+  $('amiDot').className = 'dot' + (S.ami ? ' on' : '');
+  $('amiTxt').textContent = S.ami ? 'Asterisk ligado' : 'Asterisk desligado';
+  $('avisoContexto').classList.toggle('hidden', !S.ami || S.temContexto);
+}
+function contar(c) { const r = {}; for (const k of c.contatos) r[k.estado] = (r[k.estado] || 0) + 1; return r; }
+function renderLista() {
+  $('lista').innerHTML = S.campanhas.map(c => {
+    const r = contar(c), feitos = c.contatos.length - (r['pendente'] || 0);
+    return `<div class="item ${c.id === S.sel && S.modo === 'ver' ? 'sel' : ''}" onclick="abrir('${c.id}')">
+      <b>${esc(c.nome)}</b>
+      <div class="row muted" style="font-size:12px;justify-content:space-between">
+        <span>${feitos}/${c.contatos.length} · ${esc(c.modo === 'rotas' ? 'rotas' : c.tronco)} → ${esc(c.destino)}</span>
+        <span class="estado-camp ${cls(c.estado)}">${ESTADOS_CAMP[c.estado] || c.estado}</span>
+      </div></div>`;
+  }).join('') || '<div class="muted">Ainda não há campanhas.</div>';
+}
+function abrir(id) { S.sel = id; S.modo = 'ver'; S.filtro = ''; S.add = false; render(); }
+function novaCampanha() { S.modo = 'nova'; render(); }
+
+function opcoesTronco(atual) {
+  const lista = S.troncos.map(t => `<option value="${esc(t.nome)}" ${t.nome === atual ? 'selected' : ''}>${esc(t.nome)}${t.estado && t.estado !== 'Not in use' ? ' · ' + esc(t.estado) : ''}</option>`);
+  if (atual && !S.troncos.some(t => t.nome === atual)) lista.unshift(`<option value="${esc(atual)}" selected>${esc(atual)} (não encontrado)</option>`);
+  return `<option value="">— escolher tronco —</option>${lista.join('')}<option value="__rotas" ${atual === '__rotas' ? 'selected' : ''}>↪ Rotas de saída do FreePBX</option>`;
+}
+function atualizarTroncos() { const s = $('f_tronco'); if (s) s.innerHTML = opcoesTronco(s.value); }
+
+function renderForm(c) {
+  const v = c || { nome: 'Campanha ' + new Date().toLocaleDateString('pt-PT'), modo: 'tronco', tronco: '', destino: '', simultaneas: 1, toqueSeg: 30,
+    tentativas: 3, intervaloMin: 30, callerid: '', prefixo: '', removerPrefixo: '', removerMais: false, esperarRamalLivre: true, verificarBlacklist: true, horaInicio: '', horaFim: '' };
+  const tr = v.modo === 'rotas' ? '__rotas' : v.tronco;
+  $('main').innerHTML = `<div class="card">
+    <h3>${c ? 'Editar campanha' : 'Nova campanha'}</h3>
+    <div class="grid">
+      <div style="grid-column:span 2"><label>Nome</label><input id="f_nome" value="${esc(v.nome)}"></div>
+      <div><label>Tronco de saída</label><div class="row" style="flex-wrap:nowrap"><select id="f_tronco">${opcoesTronco(tr)}</select><button class="sm" title="Recarregar troncos" onclick="recarregarTroncos()">↻</button></div></div>
+      <div><label>Tocar no ramal / fila</label><input id="f_destino" class="num" inputmode="numeric" placeholder="ex. 1001" value="${esc(v.destino)}"></div>
+    </div>
+    ${c ? '' : `<div style="margin-top:14px"><label>Números — um por linha (pode ter nome: <span class="num">912345678;Maria</span>). Pode colar do Excel.</label>
+      <textarea id="f_numeros" placeholder="912345678&#10;+351 913 000 000;João Silva&#10;Maria;00351210000000"></textarea>
+      <div id="f_conta" class="muted" style="font-size:12px;margin-top:4px"></div></div>`}
+    <details ${c ? 'open' : ''}><summary>Opções</summary>
+      <div class="grid">
+        <div><label>Chamadas em simultâneo</label><input id="f_simultaneas" type="number" min="1" max="50" value="${v.simultaneas}"></div>
+        <div><label>Tempo a tocar no cliente (s)</label><input id="f_toqueSeg" type="number" min="10" max="120" value="${v.toqueSeg}"></div>
+        <div><label>Tentativas por número</label><input id="f_tentativas" type="number" min="1" max="10" value="${v.tentativas}"></div>
+        <div><label>Intervalo entre tentativas (min)</label><input id="f_intervaloMin" type="number" min="0" value="${v.intervaloMin}"></div>
+        <div><label>CallerID que o cliente vê</label><input id="f_callerid" class="num" placeholder="vazio = do tronco" value="${esc(v.callerid)}"></div>
+        <div><label>Acrescentar prefixo</label><input id="f_prefixo" class="num" placeholder="ex. 00" value="${esc(v.prefixo)}"></div>
+        <div><label>Remover prefixo</label><input id="f_removerPrefixo" class="num" placeholder="ex. 351" value="${esc(v.removerPrefixo)}"></div>
+        <div><label>Horário permitido</label><div class="row" style="flex-wrap:nowrap"><input id="f_horaInicio" type="time" value="${v.horaInicio}"><input id="f_horaFim" type="time" value="${v.horaFim}"></div></div>
+      </div>
+      <div class="row" style="margin-top:12px;gap:18px">
+        <label class="check"><input id="f_esperarRamalLivre" type="checkbox" ${v.esperarRamalLivre ? 'checked' : ''}> Só ligar quando o ramal estiver livre</label>
+        <label class="check"><input id="f_verificarBlacklist" type="checkbox" ${v.verificarBlacklist ? 'checked' : ''}> Saltar números da blacklist do FreePBX</label>
+        <label class="check"><input id="f_removerMais" type="checkbox" ${v.removerMais ? 'checked' : ''}> Tirar o "+" dos números</label>
+      </div>
+    </details>
+    <div class="row" style="margin-top:16px">
+      ${c ? `<button class="pri" onclick="guardar('${c.id}')">Guardar</button><button onclick="abrir('${c.id}')">Cancelar</button>`
+          : `<button class="pri big" onclick="criar(true)" ${S.ami ? '' : 'title="Asterisk desligado"'}>📞 Ligar</button><button onclick="criar(false)">Guardar sem ligar</button>`}
+    </div>
+  </div>`;
+  const ta = $('f_numeros');
+  if (ta) ta.addEventListener('input', () => {
+    const n = ta.value.split(/\r?\n/).filter(l => /\d{3,}/.test(l)).length;
+    $('f_conta').textContent = n ? n + ' número(s)' : '';
+  });
+}
+function lerForm() {
+  const g = id => $('f_' + id);
+  const tr = g('tronco').value;
+  return {
+    nome: g('nome').value, modo: tr === '__rotas' ? 'rotas' : 'tronco', tronco: tr === '__rotas' ? '' : tr, destino: g('destino').value.trim(),
+    simultaneas: g('simultaneas').value, toqueSeg: g('toqueSeg').value, tentativas: g('tentativas').value, intervaloMin: g('intervaloMin').value,
+    callerid: g('callerid').value, prefixo: g('prefixo').value, removerPrefixo: g('removerPrefixo').value, removerMais: g('removerMais').checked,
+    esperarRamalLivre: g('esperarRamalLivre').checked, verificarBlacklist: g('verificarBlacklist').checked,
+    horaInicio: g('horaInicio').value, horaFim: g('horaFim').value
+  };
+}
+async function recarregarTroncos() { try { const r = await api('POST', '/api/troncos'); S.troncos = r.troncos; atualizarTroncos(); toast(r.troncos.length + ' tronco(s)'); } catch (e) { toast(e.message); } }
+async function criar(iniciar) {
+  const corpo = Object.assign(lerForm(), { numeros: $('f_numeros').value, iniciar });
+  if (iniciar && corpo.modo === 'tronco' && !corpo.tronco) return toast('Escolha o tronco');
+  if (iniciar && !corpo.destino) return toast('Indique o ramal que vai receber as chamadas');
+  try {
+    const r = await api('POST', '/api/campanhas', corpo);
+    S.sel = r.campanha.id; S.modo = 'ver';
+    let t = r.adicionados + ' número(s) adicionado(s)';
+    if (r.duplicados) t += ' · ' + r.duplicados + ' repetido(s)';
+    if (r.invalidos.length) t += ' · ' + r.invalidos.length + ' inválido(s)';
+    toast(t);
+    if (!S.campanhas.some(c => c.id === r.campanha.id)) S.campanhas.unshift(r.campanha);
+    render();
+  } catch (e) { toast(e.message); }
+}
+async function guardar(id) {
+  try { const r = await api('PUT', '/api/campanhas/' + id, lerForm()); Object.assign(camp(), r.campanha); S.modo = 'ver'; render(); toast('Guardado'); }
+  catch (e) { toast(e.message); }
+}
+
+function tempo(ms) { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function hora(ts) { return ts ? new Date(ts).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : ''; }
+
+function renderCampanha() {
+  const c = camp();
+  if (!c) return;
+  // a tabela é redesenhada a cada evento — guardar o que está a ser escrito na caixa de números
+  const ta0 = $('addNums');
+  if (ta0) { S.addTexto = ta0.value; S.addFoco = document.activeElement === ta0; }
+  const r = contar(c);
+  const total = c.contatos.length;
+  const feitos = total - (r['pendente'] || 0) - (r['a ligar'] || 0) - (r['a tocar'] || 0) - (r['atendeu'] || 0) - (r['em conversa'] || 0);
+  const emCurso = (r['a ligar'] || 0) + (r['a tocar'] || 0) + (r['atendeu'] || 0) + (r['em conversa'] || 0);
+  const cartoes = [
+    ['', 'Total', total], ['pendente', 'Pendentes', r['pendente'] || 0], ['_curso', 'Em curso', emCurso],
+    ['concluida', 'Concluídas', r['concluida'] || 0], ['nao atendeu', 'Não atendeu', r['nao atendeu'] || 0],
+    ['ocupado', 'Ocupado', r['ocupado'] || 0], ['sem agente', 'Sem agente', r['sem agente'] || 0],
+    ['falhou', 'Falhou', (r['falhou'] || 0) + (r['recusou'] || 0)], ['bloqueado', 'Blacklist', r['bloqueado'] || 0]
+  ].filter(x => x[0] === '' || x[0] === 'pendente' || x[0] === '_curso' || x[2]);
+  const correr = c.estado === 'a correr';
+  const filtro = S.filtro;
+  const lista = c.contatos.filter(k => !filtro || (filtro === '_curso' ? ['a ligar', 'a tocar', 'atendeu', 'em conversa'].includes(k.estado)
+    : filtro === 'falhou' ? ['falhou', 'recusou'].includes(k.estado) : k.estado === filtro));
+  const agora = Date.now();
+  const repetiveis = ['nao atendeu', 'ocupado', 'falhou', 'recusou', 'sem agente'].reduce((n, e) => n + (r[e] || 0), 0);
+
+  $('main').innerHTML = `<div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div><h2>${esc(c.nome)}</h2>
+        <div class="muted" style="margin-top:2px">${c.modo === 'rotas' ? 'Rotas de saída do FreePBX' : 'Tronco <b>' + esc(c.tronco) + '</b>'}
+          → toca no <b>${esc(c.destino)}</b> · ${c.simultaneas} em simultâneo · ${c.tentativas} tentativa(s)${c.horaInicio ? ' · ' + c.horaInicio + '–' + c.horaFim : ''}</div></div>
+      <span class="estado-camp ${cls(c.estado)}">${ESTADOS_CAMP[c.estado] || c.estado}</span>
+    </div>
+    <div class="row" style="margin-top:14px">
+      ${correr ? `<button onclick="acao('pausar')">⏸ Pausar</button><button class="bad" onclick="doisCliques(this,()=>acao('parar'))">⏹ Parar e desligar</button>`
+               : `<button class="pri big" onclick="acao('iniciar')" ${c.estado === 'concluida' && !r['pendente'] ? 'disabled' : ''}>📞 ${c.estado === 'parada' ? 'Ligar' : 'Continuar'}</button>`}
+      ${repetiveis ? `<button onclick="acao('repetir')">↻ Voltar a ligar aos ${repetiveis} não concluídos</button>` : ''}
+      <button onclick="adicionar()">+ Números</button>
+      <button onclick="S.modo='editar';render()">⚙ Editar</button>
+      <a class="btn" href="/api/campanhas/${c.id}/csv">⬇ CSV</a>
+      <span style="flex:1"></span>
+      <button class="bad" onclick="doisCliques(this,apagar)">Apagar</button>
+    </div>
+    ${c.aviso ? `<div class="aviso ${/indispon|fora|falta|não existe/.test(c.aviso) ? 'warn' : ''}">${esc(c.aviso)}</div>` : ''}
+    <div style="margin-top:14px" class="bar"><div style="width:${total ? Math.round(feitos / total * 100) : 0}%"></div></div>
+    <div class="stats">${cartoes.map(([k, l, n]) => `<div class="stat ${filtro === k ? 'sel' : ''}" onclick="S.filtro='${k}';renderCampanha()"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('')}</div>
+    <div id="addBox" class="${S.add ? '' : 'hidden'}" style="margin-bottom:14px"><textarea id="addNums" placeholder="um número por linha"></textarea>
+      <div class="row" style="margin-top:8px"><button class="pri" onclick="enviarNumeros()">Adicionar</button><button onclick="fecharAdd()">Cancelar</button></div></div>
+    <div class="tbl"><table>
+      <thead><tr><th>Número</th><th>Nome</th><th>Estado</th><th>Tent.</th><th>Detalhe</th><th></th></tr></thead>
+      <tbody>${lista.slice(0, 1000).map(k => {
+        let det = '';
+        if (k.estado === 'em conversa' && k.conversaEm) det = '⏱ ' + tempo(agora - k.conversaEm);
+        else if (k.estado === 'atendeu' && k.atendeuEm) det = 'a tocar no ramal há ' + tempo(agora - k.atendeuEm);
+        else if (k.estado === 'pendente' && k.proximaEm > agora) det = (NOMES[k.ultimoResultado] || '') + ' · nova tentativa às ' + hora(k.proximaEm);
+        else if (k.estado === 'concluida') det = k.duracaoSeg != null ? 'falou ' + tempo(k.duracaoSeg * 1000) : '';
+        else if (k.historico?.length) det = k.historico[k.historico.length - 1].texto;
+        const ativo = ['a ligar', 'a tocar', 'atendeu', 'em conversa'].includes(k.estado);
+        return `<tr><td class="num">${esc(k.numero)}</td><td>${esc(k.nome)}</td>
+          <td><span class="badge b-${cls(k.estado)}">${NOMES[k.estado] || esc(k.estado)}</span></td>
+          <td>${k.tentativas}</td><td class="muted" title="${esc((k.historico || []).map(h => hora(h.ts) + ' ' + h.texto).join('\n'))}">${esc(det)}</td>
+          <td style="white-space:nowrap;text-align:right">${ativo
+            ? `<button class="sm bad" onclick="contatoAcao('${k.id}','desligar')">Desligar</button>`
+            : `<button class="sm" onclick="contatoAcao('${k.id}','ligar')" title="Ligar já a este número">📞</button> <button class="sm" onclick="doisCliques(this,()=>contatoAcao('${k.id}','remover'))" title="Remover">✕</button>`}</td></tr>`;
+      }).join('')}</tbody></table>
+      ${lista.length > 1000 ? `<div class="muted" style="padding:8px">a mostrar 1000 de ${lista.length}</div>` : ''}
+      ${!lista.length ? '<div class="muted" style="padding:12px">Nada aqui.</div>' : ''}
+    </div>
+  </div>`;
+  if (S.add) { $('addNums').value = S.addTexto || ''; if (S.addFoco) $('addNums').focus(); }
+}
+// relógios das chamadas em curso
+setInterval(() => { if (S.modo === 'ver' && camp()?.contatos.some(k => k.estado === 'em conversa' || k.estado === 'atendeu')) renderCampanha(); }, 1000);
+
+async function acao(a) {
+  try { const r = await api('POST', `/api/campanhas/${S.sel}/${a}`); if (r.repostos != null) toast(r.repostos + ' número(s) repostos'); if (r.desligadas) toast(r.desligadas + ' chamada(s) desligada(s)'); }
+  catch (e) { toast(e.message); }
+}
+async function contatoAcao(id, a) { try { await api('POST', `/api/campanhas/${S.sel}/contatos/${id}/${a}`); } catch (e) { toast(e.message); } }
+async function apagar() { try { await api('DELETE', '/api/campanhas/' + S.sel); } catch (e) { toast(e.message); } }
+function adicionar() { S.add = true; S.addTexto = ''; $('addBox').classList.remove('hidden'); $('addNums').focus(); }
+function fecharAdd() { S.add = false; S.addTexto = ''; $('addBox').classList.add('hidden'); }
+async function enviarNumeros() {
+  try { const r = await api('POST', `/api/campanhas/${S.sel}/numeros`, { numeros: $('addNums').value });
+    fecharAdd();
+    toast(r.adicionados + ' adicionado(s)' + (r.duplicados ? ' · ' + r.duplicados + ' repetido(s)' : '') + (r.invalidos.length ? ' · ' + r.invalidos.length + ' inválido(s)' : '')); }
+  catch (e) { toast(e.message); }
+}
+
+ligarEventos();
+</script>
+</body>
+</html>
